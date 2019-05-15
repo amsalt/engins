@@ -1,10 +1,11 @@
 package conf
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/amsalt/engins/errs"
 )
 
 // Configurator represents a configuration parser.
@@ -31,12 +32,11 @@ func (c *Configurator) Parse(target interface{}, paths ...string) {
 	for _, path := range paths {
 		fields := strings.Split(path, ".")
 		suffix := fields[len(fields)-1]
-
 		fullPath := c.baseDir + path
 
 		parser := parsers[suffix]
 		if parser == nil {
-			panic(fmt.Errorf("unsupported file type: %+v", suffix))
+			panic(errs.NewUnsupportedType(suffix))
 		} else {
 			parser.Parse(fullPath, target)
 		}
