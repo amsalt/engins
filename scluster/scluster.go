@@ -3,24 +3,34 @@ package scluster
 import (
 	"github.com/amsalt/cluster"
 	"github.com/amsalt/cluster/balancer"
+	"github.com/amsalt/cluster/balancer/stickiness"
+	"github.com/amsalt/cluster/consts"
 	"github.com/amsalt/cluster/resolver"
 	"github.com/amsalt/engins"
+	"github.com/amsalt/log"
 	"github.com/amsalt/nginet/core"
+	"github.com/amsalt/nginet/encoding"
+	"github.com/amsalt/nginet/encoding/json"
 )
 
-const (
-	DefaultRelayStickiness = "UserID"
-)
+// IdentifySelf is a protocol for cluster client to register self information when connected with server.
+type IdentifySelf struct {
+	Name string
+	Addr string
+}
 
 type Cluster struct {
-	clus    *cluster.Cluster
-	servers map[*cluster.Server]string
+	resolver resolver.Resolver
+	clus     *cluster.Cluster
+	servers  map[*cluster.Server]string
+	storages map[string]balancer.Storage
 }
 
 func NewCluster(rsv resolver.Resolver) *Cluster {
-	c := &Cluster{}
+	c := &Cluster{resolver: rsv}
 	c.clus = cluster.NewCluster(rsv)
 	c.servers = make(map[*cluster.Server]string)
+	c.storages = make(map[string]balancer.Storage)
 
 	return c
 }
@@ -34,11 +44,46 @@ func (c *Cluster) Clients(servName string) []core.SubChannel {
 }
 
 func (c *Cluster) Write(servName string, msg interface{}, ctx ...interface{}) error {
-	return c.clus.Write(servName, msg, ctx...)
+	err := c.clus.Write(servName, msg, ctx...)
+
+	if err != nil {
+		for s := range c.servers {
+			log.Errorf("server %+v writing message to %+v", s, servName)
+			if len(ctx) > 0 {
+				err = s.Write(servName, msg, ctx[0])
+			} else {
+				s.Write(servName, msg, nil)
+			}
+
+			if err == nil {
+				return nil
+			}
+
+		}
+	}
+	return err
 }
 
 func (c *Cluster) Init() {
-	// todo
+	engins.RegisterMsgByID(consts.SystemProtocolIdentifySelf, &IdentifySelf{}).SetCodec(encoding.MustGetCodec(json.CodecJSON))
+	engins.RegisterProcessorByID(consts.SystemProtocolIdentifySelf, func(ctx *core.ChannelContext, msg interface{}, args ...interface{}) {
+		relatedServer := ctx.Attr().Value(RelatedServer)
+		log.Debugf("%+v receive msg from client %+v", relatedServer, msg)
+		if relatedServer != nil {
+			if server, ok := relatedServer.(*cluster.Server); ok {
+				if identify, ok := msg.(*IdentifySelf); ok {
+					ctx.Attr().SetValue(ChannelName, identify.Name)
+					if server.GetBalancer(identify.Name) == nil {
+						c.storages[identify.Name] = stickiness.NewDefaultStorage()
+						b := balancer.GetBuilder("stickiness").Build(stickiness.WithStorage(c.storages[identify.Name]), stickiness.WithServName(identify.Name), stickiness.WithResolver(c.resolver))
+						server.SetBalancer(identify.Name, b)
+						c.resolver.RegisterSubChannel(identify.Name, ctx.Channel().(core.SubChannel))
+						log.Debugf("server set balancer for client: %+v", identify.Name)
+					}
+				}
+			}
+		}
+	})
 }
 
 // Start starts the Cluster
@@ -54,120 +99,4 @@ func (c *Cluster) Stop() {
 	for s := range c.servers {
 		s.Close()
 	}
-}
-
-// BuildOption helper method to build a new client or a server.
-type BuildOption func(interface{})
-
-// BuildServer builds a new server with ServerName, address, serverType and Options.
-func (c *Cluster) BuildServer(servName string, addr string, servType string, opt ...BuildOption) {
-	opts := defaultConfigOpts
-	for _, o := range opt {
-		o(&opts)
-	}
-	server := c.clus.NewServerWithConfig(servName, opts.ReadBufSize, opts.WriteBufSize, opts.MaxConn)
-	server.InitAcceptor(opts.Executor, engins.Register, engins.Dispatcher, servType)
-
-	if opts.IsRelay {
-		relayHandler := cluster.NewRelayHandler(servName, c.clus, DefaultRelayStickiness)
-		server.AddAfterHandler("IDParser", nil, "RelayHandler", relayHandler)
-	}
-
-	c.servers[server] = addr
-}
-
-// BuildServerWithAcceptor builds a new server with serverName, address, acceptor and Options.
-// NOTE: When use this method, register and dispatcher must use  engins.Register and engins.Dispatcher
-func (c *Cluster) BuildServerWithAcceptor(servName string, addr string, acceptor core.AcceptorChannel, opt ...BuildOption) {
-	opts := defaultConfigOpts
-	for _, o := range opt {
-		o(&opts)
-	}
-	server := c.clus.NewServerWithConfig(servName, opts.ReadBufSize, opts.WriteBufSize, opts.MaxConn)
-	server.SetAcceptor(acceptor)
-
-	c.servers[server] = addr
-}
-
-// BuildClient builds a client with Options and service type.
-func (c *Cluster) BuildClient(servName string, opt ...BuildOption) {
-	opts := defaultConfigOpts
-	for _, o := range opt {
-		o(&opts)
-	}
-	client := cluster.NewClientWithBufSize(opts.ReadBufSize, opts.WriteBufSize)
-	client.InitConnector(opts.Executor, engins.Register, engins.Dispatcher)
-	c.clus.AddClient(servName, client, opts.Balancer)
-}
-
-// BuildClientWithConnector builds a client with Connector and service type.
-// NOTE: When use this method, register and dispatcher must use  engins.Register and engins.Dispatcher
-func (c *Cluster) BuildClientWithConnector(servName string, connector core.ConnectorChannel, opt ...BuildOption) {
-	opts := defaultConfigOpts
-	for _, o := range opt {
-		o(&opts)
-	}
-	client := cluster.NewClientWithBufSize(opts.ReadBufSize, opts.WriteBufSize)
-	client.SetConnector(connector)
-	c.clus.AddClient(servName, client, opts.Balancer)
-}
-
-// WithWriteBufSize sets max size of pending wirte.
-func WithWriteBufSize(s int) BuildOption {
-	return func(o interface{}) {
-		o.(*ConfigOpts).WriteBufSize = s
-	}
-}
-
-// WithReadBufSize sets max size of pending read.
-func WithReadBufSize(s int) BuildOption {
-	return func(o interface{}) {
-		o.(*ConfigOpts).ReadBufSize = s
-	}
-}
-
-// WithExecutor sets executor.
-func WithExecutor(e core.Executor) BuildOption {
-	return func(o interface{}) {
-		o.(*ConfigOpts).Executor = e
-	}
-}
-
-// WithBalancer sets executor.
-func WithBalancer(b balancer.Balancer) BuildOption {
-	return func(o interface{}) {
-		o.(*ConfigOpts).Balancer = b
-	}
-}
-
-// WithServerMaxConnSize sets max size of connected clients.
-func WithServerMaxConnSize(m int) BuildOption {
-	return func(o interface{}) {
-		o.(*ConfigOpts).MaxConn = m
-	}
-}
-
-// WithServerRelay sets whether the server is a relay server.
-func WithServerRelay(b bool) BuildOption {
-	return func(o interface{}) {
-		o.(*ConfigOpts).IsRelay = b
-	}
-}
-
-// ConfigOpts represents the options to build a new cluster.Server or cluster.Client
-type ConfigOpts struct {
-	Executor     core.Executor     // sets which goroutine logic handler run.
-	WriteBufSize int               // sets the size of write buffer.
-	ReadBufSize  int               // sets the size of read buffer.
-	Balancer     balancer.Balancer // sets the balancer to dispatch message in servers.
-
-	// server specific
-	MaxConn int  // limit the max connection number to the server.
-	IsRelay bool // whether the server is a relay server.
-}
-
-var defaultConfigOpts = ConfigOpts{
-	WriteBufSize: 1024 * 10,
-	ReadBufSize:  1024 * 10,
-	MaxConn:      1000000,
 }

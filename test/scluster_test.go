@@ -14,19 +14,15 @@ import (
 	"github.com/amsalt/nginet/gnetlog"
 )
 
-type tcpChannel struct {
-	Msg string
-}
-
 func TestSCluster(t *testing.T) {
 	gnetlog.Init()
 
 	engins.RegisterMsgByID(1, &tcpChannel{})
 	engins.RegisterProcessorByID(1, func(ctx *core.ChannelContext, msg interface{}, args ...interface{}) {
 		if m, ok := msg.([]byte); ok {
-			log.Infof("tcpChannel handler: %+v", string(m))
+			log.Infof("received message %+v from server %+v ", string(m), ctx.Attr().Value(scluster.ChannelName))
 		} else {
-			log.Infof("tcpChannel handler: %+v", msg)
+			log.Infof("received message %+v from server %+v ", msg, ctx.Attr().Value(scluster.ChannelName))
 		}
 	})
 
@@ -34,24 +30,30 @@ func TestSCluster(t *testing.T) {
 	b := balancer.GetBuilder("stickiness").Build(stickiness.WithServName("game"), stickiness.WithResolver(resolver))
 
 	c := scluster.NewCluster(resolver)
+	c.Init()
 	c.RegisterRouter(1, "game")
 
 	// gate server role
+	// for player client connecting.
 	c.BuildServer("gate", ":7878", core.TCPServBuilder, scluster.WithServerRelay(true))
-	c.BuildClient("game", scluster.WithBalancer(b))
+	// to connect game server.
+	c.BuildClient("game", "gate", scluster.WithBalancer(b))
 
 	// game server role
+	// for gate server connect.
 	c.BuildServer("game", ":7879", core.TCPServBuilder, scluster.WithServerRelay(false))
 
 	// player client role
-	c.BuildClient("gate", scluster.WithBalancer(b))
+	// connect gate server.
+	c.BuildClient("gate", "player", scluster.WithBalancer(b))
 
 	c.Start()
 
-	time.Sleep(time.Second * 3)
+	time.Sleep(time.Second * 10)
 
-	// client role.
-	c.Write("gate", &tcpChannel{Msg: "cluster send message1"})
+	// player client role.
+	// write message to gate server.
+	err := c.Write("gate", &tcpChannel{Msg: "cluster send message1"})
+	log.Errorf("send message result: %+v", err)
 	time.Sleep(time.Second * 30)
-
 }
