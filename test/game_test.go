@@ -1,8 +1,9 @@
 package test
 
 import (
+	"fmt"
+	"math/rand"
 	"testing"
-	"time"
 
 	"github.com/amsalt/engins"
 	"github.com/amsalt/engins/cluster"
@@ -35,9 +36,8 @@ func TestGame(t *testing.T) {
 	// game server role
 	// for gate server connect.
 	c := cluster.NewCluster(resolver)
-	c.Init()
 	c.BuildServer("game", ":7879", core.TCPServBuilder, cluster.WithServerRelay(false))
-	c.Start()
 
-	time.Sleep(time.Second * 300)
+	fmt.Println(rand.Intn(19))
+	engins.Run(c)
 }

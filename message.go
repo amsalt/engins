@@ -2,10 +2,11 @@ package engins
 
 import "github.com/amsalt/nginet/message"
 
-// Register registers message before use.
+// Register registers message. In engins, all message should be registered before use.
 var Register message.Register
 
 // Dispatcher dispatches the message to handler.
+// Helper method to register message with handler.
 var Dispatcher message.ProcessorMgr
 
 func init() {

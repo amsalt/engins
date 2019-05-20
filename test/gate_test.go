@@ -1,8 +1,9 @@
 package test
 
 import (
+	"fmt"
+	"math/rand"
 	"testing"
-	"time"
 
 	"github.com/amsalt/engins"
 	"github.com/amsalt/engins/cluster"
@@ -33,7 +34,6 @@ func TestGate(t *testing.T) {
 	b := balancer.GetBuilder("stickiness").Build(stickiness.WithServName("game"), stickiness.WithResolver(resolver))
 	c.BuildClient("game", "gate", cluster.WithBalancer(b))
 
-	c.Start()
-
-	time.Sleep(time.Second * 300)
+	fmt.Println(rand.Intn(19))
+	engins.Run(c)
 }

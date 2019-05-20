@@ -1,7 +1,10 @@
 package cluster
 
 import (
+	"fmt"
+
 	"github.com/amsalt/engins"
+	"github.com/amsalt/log"
 	"github.com/amsalt/ngicluster"
 	"github.com/amsalt/ngicluster/balancer"
 	"github.com/amsalt/ngicluster/consts"
@@ -56,10 +59,14 @@ func (c *Cluster) Clients(servName string) []core.SubChannel {
 // it will try to use client connection or server connection to send message.
 func (c *Cluster) Write(servName string, msg interface{}, ctx ...interface{}) error {
 	var err error
+	var found bool
 	if len(c.Clients(servName)) > 0 {
+		found = true
+		log.Debugf("cluster write msg with client.")
 		err = c.clus.Write(servName, msg, ctx...)
 	} else {
 		for s := range c.servers { // support multiple servers.
+			log.Debugf("cluster write msg with server.")
 			if len(ctx) > 0 {
 				err = s.Write(servName, msg, ctx[0])
 			} else {
@@ -67,9 +74,15 @@ func (c *Cluster) Write(servName string, msg interface{}, ctx ...interface{}) er
 			}
 
 			if err == nil {
+				found = true
 				return nil
 			}
 		}
+	}
+
+	if !found {
+		log.Errorf("no suited cluster componets found to write message for %s", servName)
+		return fmt.Errorf("no suited cluster componets found to write message for %s", servName)
 	}
 
 	return err
@@ -92,7 +105,11 @@ func (c *Cluster) Start() {
 
 // Stop stops the Cluster
 func (c *Cluster) Stop() {
+	// stop servers
 	for s := range c.servers {
 		s.Close()
 	}
+
+	// stop clients
+	c.clus.CloseClients()
 }

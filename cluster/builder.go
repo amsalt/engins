@@ -48,15 +48,14 @@ func (c *Cluster) BuildServerWithAcceptor(servName string, addr string, acceptor
 func (c *Cluster) registerServListener(server *ngicluster.Server, servName string, opts *ConfigOpts) {
 	server.OnConnect(func(ctx *core.ChannelContext, channel core.Channel) {
 		ctx.Attr().SetValue(AssociatedServerKey, server)
-
 		if opts.OnConnect != nil {
-			server.OnConnect(opts.OnConnect)
+			opts.OnConnect(ctx, channel)
 		}
 	})
 
-	server.OnDisconnect(func(*core.ChannelContext) {
-		if opts.OnConnect != nil {
-			server.OnDisconnect(opts.OnDisconnect)
+	server.OnDisconnect(func(ctx *core.ChannelContext) {
+		if opts.OnDisconnect != nil {
+			opts.OnDisconnect(ctx)
 		}
 	})
 
@@ -102,13 +101,13 @@ func (c *Cluster) registerCliListener(client *ngicluster.Client, clientName stri
 		c.identifingSelf(clientName, ctx)
 
 		if opts.OnConnect != nil {
-			client.OnConnect(opts.OnConnect)
+			opts.OnConnect(ctx, channel)
 		}
 	})
 
-	client.OnDisconnect(func(*core.ChannelContext) {
-		if opts.OnConnect != nil {
-			client.OnDisconnect(opts.OnDisconnect)
+	client.OnDisconnect(func(ctx *core.ChannelContext) {
+		if opts.OnDisconnect != nil {
+			opts.OnDisconnect(ctx)
 		}
 	})
 }
