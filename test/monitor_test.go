@@ -14,5 +14,7 @@ func TestMonitor(t *testing.T) {
 	m.Init()
 	m.Start()
 
+	// to test this case, use `telnet 127.0.0.1 7878` and
+	// type some message and hit the `enter` key.
 	time.Sleep(time.Second * 60)
 }

@@ -4,38 +4,36 @@ import (
 	"testing"
 	"time"
 
-	"github.com/amsalt/cluster/balancer"
-	"github.com/amsalt/cluster/balancer/stickiness"
-	"github.com/amsalt/cluster/resolver/static"
 	"github.com/amsalt/engins"
-	"github.com/amsalt/engins/scluster"
+	"github.com/amsalt/engins/cluster"
+	"github.com/amsalt/ngicluster/balancer"
+	"github.com/amsalt/ngicluster/balancer/stickiness"
+	"github.com/amsalt/ngicluster/resolver/static"
 	"github.com/amsalt/nginet/core"
-	"github.com/amsalt/nginet/gnetlog"
 )
 
 func TestGate(t *testing.T) {
-	gnetlog.Init()
 
 	engins.RegisterMsgByID(1, &tcpChannel{})
 
 	resolver := static.NewConfigBasedResolver()
+	resolver.Register("game", ":7879") // register game server for test.
 
-	c := scluster.NewCluster(resolver)
-	c.Init()
-	c.RegisterRouter(1, "game")
+	c := cluster.NewCluster(resolver)
+
+	// register router mapping
+	// message whose ID is 1 will be relay to special `game` server.
+	c.RegisterRelayRouter(1, "game")
 
 	// gate server role
 	// for player client connecting.
-	c.BuildServer("gate", ":7878", core.TCPServBuilder, scluster.WithServerRelay(true))
-	// to connect game server.
+	c.BuildServer("gate", ":7878", core.TCPServBuilder, cluster.WithServerRelay(true))
+
+	// connect game server.
 	b := balancer.GetBuilder("stickiness").Build(stickiness.WithServName("game"), stickiness.WithResolver(resolver))
-	c.BuildClient("game", "gate", scluster.WithBalancer(b))
+	c.BuildClient("game", "gate", cluster.WithBalancer(b))
+
 	c.Start()
-	resolver.Register("game", ":7879")
 
-	// time.Sleep(time.Second * 5)
-	// err := c.Write("game", &tcpChannel{Msg: "cluster send message1"})
-	// log.Errorf("send message result: %+v", err)
-
-	time.Sleep(time.Second * 600)
+	time.Sleep(time.Second * 300)
 }

@@ -4,28 +4,24 @@ import (
 	"testing"
 	"time"
 
-	"github.com/amsalt/cluster/balancer"
-	"github.com/amsalt/cluster/balancer/stickiness"
-	"github.com/amsalt/cluster/resolver/static"
 	"github.com/amsalt/engins"
-	"github.com/amsalt/engins/scluster"
+	"github.com/amsalt/engins/cluster"
 	"github.com/amsalt/log"
-	"github.com/amsalt/nginet/gnetlog"
+	"github.com/amsalt/ngicluster/balancer"
+	"github.com/amsalt/ngicluster/balancer/stickiness"
+	"github.com/amsalt/ngicluster/resolver/static"
 )
 
 func TestClient(t *testing.T) {
-	gnetlog.Init()
-
 	engins.RegisterMsgByID(1, &tcpChannel{})
 	resolver := static.NewConfigBasedResolver()
-	c := scluster.NewCluster(resolver)
+	c := cluster.NewCluster(resolver)
 	c.Init()
 
 	// player client role
 	// connect gate server.
 	b := balancer.GetBuilder("stickiness").Build(stickiness.WithServName("gate"), stickiness.WithResolver(resolver))
-
-	c.BuildClient("gate", "player", scluster.WithBalancer(b))
+	c.BuildClient("gate", "player", cluster.WithBalancer(b))
 
 	c.Start()
 	resolver.Register("gate", ":7878")
@@ -33,7 +29,9 @@ func TestClient(t *testing.T) {
 
 	// player client role.
 	// write message to gate server.
+	// Assert relay to `game` server.
 	err := c.Write("gate", &tcpChannel{Msg: "cluster send message1"})
-	log.Errorf("send message result: %+v", err)
-	time.Sleep(time.Second * 111)
+	log.Infof("send message result: %+v", err)
+
+	time.Sleep(time.Second * 211)
 }
