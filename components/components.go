@@ -6,7 +6,7 @@ import (
 	"github.com/amsalt/nginet/safe"
 )
 
-// ensure all componets exit.
+// ensure all components exit.
 var wg sync.WaitGroup
 var components []Component
 

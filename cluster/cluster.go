@@ -81,8 +81,8 @@ func (c *Cluster) Write(servName string, msg interface{}, ctx ...interface{}) er
 	}
 
 	if !found {
-		log.Errorf("no suited cluster componets found to write message for %s", servName)
-		return fmt.Errorf("no suited cluster componets found to write message for %s", servName)
+		log.Errorf("no suited cluster components found to write message for %s", servName)
+		return fmt.Errorf("no suited cluster components found to write message for %s", servName)
 	}
 
 	return err

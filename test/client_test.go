@@ -1,7 +1,6 @@
 package test
 
 import (
-	"fmt"
 	"math/rand"
 	"testing"
 
@@ -34,8 +33,7 @@ func TestClient(t *testing.T) {
 		log.Errorf("client connection closed")
 	}))
 
-	fmt.Println(rand.Intn(31))
-
+	rand.Intn(2)
 	engins.Run(c)
 
 }

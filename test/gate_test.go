@@ -1,7 +1,6 @@
 package test
 
 import (
-	"fmt"
 	"math/rand"
 	"testing"
 
@@ -31,9 +30,12 @@ func TestGate(t *testing.T) {
 	c.BuildServer("gate", ":7878", core.TCPServBuilder, cluster.WithServerRelay(true))
 
 	// connect game server.
-	b := balancer.GetBuilder("stickiness").Build(stickiness.WithServName("game"), stickiness.WithResolver(resolver))
+	b := balancer.GetBuilder("stickiness").Build(
+		stickiness.WithServName("game"),
+		stickiness.WithResolver(resolver),
+	)
 	c.BuildClient("game", "gate", cluster.WithBalancer(b))
 
-	fmt.Println(rand.Intn(19))
+	rand.Intn(1)
 	engins.Run(c)
 }

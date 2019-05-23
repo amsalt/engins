@@ -1,12 +1,12 @@
 package test
 
 import (
-	"fmt"
 	"math/rand"
 	"testing"
 
 	"github.com/amsalt/engins"
 	"github.com/amsalt/engins/cluster"
+	"github.com/amsalt/engins/monitor"
 	"github.com/amsalt/log"
 	"github.com/amsalt/ngicluster/resolver/static"
 	"github.com/amsalt/nginet/core"
@@ -38,6 +38,6 @@ func TestGame(t *testing.T) {
 	c := cluster.NewCluster(resolver)
 	c.BuildServer("game", ":7879", core.TCPServBuilder, cluster.WithServerRelay(false))
 
-	fmt.Println(rand.Intn(19))
-	engins.Run(c)
+	rand.Intn(1)
+	engins.Run(c, monitor.NewMonitor("9966"))
 }
