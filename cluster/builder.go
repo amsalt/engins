@@ -74,7 +74,7 @@ func (c *Cluster) BuildClient(servName string, clientName string, opt ...BuildOp
 		o(&opts)
 	}
 	client := ngicluster.NewClientWithBufSize(opts.ReadBufSize, opts.WriteBufSize)
-	client.InitConnector(opts.Executor, engins.Register, engins.Dispatcher)
+	client.InitConnector(opts.Executor, engins.Register, engins.Dispatcher, true)
 
 	c.registerCliListener(client, clientName, &opts)
 	c.clus.AddClient(servName, client, opts.Balancer)
