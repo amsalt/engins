@@ -23,10 +23,9 @@ func TestGame(t *testing.T) {
 			}
 
 		} else {
+			log.Infof("received message %+v", msg)
 			if len(args) > 0 {
-				log.Infof("received message %+v, %+v", msg, args[0])
-			} else {
-				log.Infof("received message %+v", msg)
+				log.Infof("received message args %+v", args[0])
 			}
 		}
 	})
@@ -38,6 +37,6 @@ func TestGame(t *testing.T) {
 	c := cluster.NewCluster(resolver)
 	c.BuildServer("game", ":7879", core.TCPServBuilder, cluster.WithServerRelay(false))
 
-	rand.Intn(1)
+	rand.Intn(122)
 	engins.Run(c, monitor.NewMonitor("9966"))
 }

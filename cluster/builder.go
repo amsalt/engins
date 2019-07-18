@@ -217,5 +217,4 @@ func (c *Cluster) identityClientHandler(ctx *core.ChannelContext, msg interface{
 			log.Debugf("server set balancer for client: %+v", identify.Name)
 		}
 	}
-
 }

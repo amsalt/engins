@@ -1,11 +1,14 @@
 package test
 
 import (
+	"fmt"
 	"math/rand"
 	"testing"
+	"time"
 
 	"github.com/amsalt/engins"
 	"github.com/amsalt/engins/cluster"
+	"github.com/amsalt/log"
 	"github.com/amsalt/ngicluster/balancer"
 	"github.com/amsalt/ngicluster/balancer/stickiness"
 	"github.com/amsalt/ngicluster/resolver/static"
@@ -34,8 +37,21 @@ func TestGate(t *testing.T) {
 		stickiness.WithServName("game"),
 		stickiness.WithResolver(resolver),
 	)
-	c.BuildClient("game", "gate", cluster.WithBalancer(b))
+	c.BuildClient("game", "gate", cluster.WithBalancer(b), cluster.WithWriteBufSize(1000))
 
-	rand.Intn(1)
+	rand.Intn(5)
+
+	go func() {
+		time.Sleep(5 * time.Second)
+
+		var i int
+		for {
+			i++
+			err := c.Write("game", &tcpChannel{Msg: fmt.Sprintf("client send message: %v", i)})
+			log.Infof("send message result: %+v", err)
+			time.Sleep(time.Second * 5)
+		}
+	}()
+
 	engins.Run(c)
 }

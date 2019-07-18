@@ -1,7 +1,6 @@
 package test
 
 import (
-	"math/rand"
 	"testing"
 
 	"github.com/amsalt/engins"
@@ -18,7 +17,7 @@ func TestClient(t *testing.T) {
 	resolver := static.NewConfigBasedResolver()
 	c := cluster.NewCluster(resolver)
 
-	resolver.Register("gate", ":7878")
+	resolver.Register("gate", "localhost:7878")
 
 	// player client role
 	// connect gate server.
@@ -27,13 +26,11 @@ func TestClient(t *testing.T) {
 		// player client role.
 		// write message to gate server.
 		// Assert relay to `game` server.
-		err := c.Write("gate", &tcpChannel{Msg: "cluster send message1"})
+		err := c.Write("gate", &tcpChannel{Msg: "client send message1"})
 		log.Infof("send message result: %+v", err)
 	}), cluster.WithOnDisConnect(func(ctx *core.ChannelContext) {
 		log.Errorf("client connection closed")
 	}))
 
-	rand.Intn(2)
 	engins.Run(c)
-
 }

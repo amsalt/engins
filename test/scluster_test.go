@@ -45,15 +45,15 @@ func TestSCluster(t *testing.T) {
 
 	// player client role
 	// connect gate server.
-	c.BuildClient("gate", "player", cluster.WithBalancer(b))
+	// c.BuildClient("gate", "player", cluster.WithBalancer(b))
 
 	c.Start()
 
-	time.Sleep(time.Second * 10)
+	// time.Sleep(time.Second * 10)
 
 	// player client role.
 	// write message to gate server.
-	err := c.Write("gate", &tcpChannel{Msg: "cluster send message1"})
-	log.Errorf("send message result: %+v", err)
-	time.Sleep(time.Second * 30)
+	// err := c.Write("gate", &tcpChannel{Msg: "cluster send message1"})
+	// log.Errorf("send message result: %+v", err)
+	time.Sleep(time.Second * 100)
 }
