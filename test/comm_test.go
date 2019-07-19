@@ -7,7 +7,7 @@ import (
 
 func init() {
 	gnetlog.Init()
-	log.Debugf("2")
+	log.Debugf("15")
 }
 
 type tcpChannel struct {

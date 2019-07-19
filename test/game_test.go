@@ -37,6 +37,6 @@ func TestGame(t *testing.T) {
 	c := cluster.NewCluster(resolver)
 	c.BuildServer("game", ":7879", core.TCPServBuilder, cluster.WithServerRelay(false))
 
-	rand.Intn(122)
+	rand.Intn(22)
 	engins.Run(c, monitor.NewMonitor("9966"))
 }

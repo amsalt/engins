@@ -26,7 +26,7 @@ func TestClient(t *testing.T) {
 		// player client role.
 		// write message to gate server.
 		// Assert relay to `game` server.
-		err := c.Write("gate", &tcpChannel{Msg: "client send message1"})
+		err := c.Write("gate", &tcpChannel{Msg: "client send message"})
 		log.Infof("send message result: %+v", err)
 	}), cluster.WithOnDisConnect(func(ctx *core.ChannelContext) {
 		log.Errorf("client connection closed")

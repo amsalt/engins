@@ -26,7 +26,9 @@ func (c *Cluster) BuildServer(servName string, addr string, servType string, opt
 		o(&opts)
 	}
 	server := c.clus.NewServerWithConfig(servName, opts.ReadBufSize, opts.WriteBufSize, opts.MaxConn)
+
 	server.InitAcceptor(opts.Executor, engins.Register, engins.Dispatcher, servType)
+
 	c.registerServListener(server, servName, &opts)
 	c.servers[server] = addr
 }
